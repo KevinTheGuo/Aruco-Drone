@@ -3,16 +3,18 @@ import cv2.aruco
 import numpy as np
 import math
 
-# Add our calculated camera calibration variables
+# CONSTANTS TO CHANGE:
 camera_matrix = np.array( [[ 612.28318156,    0.        ,  377.95149893],
                            [   0.        ,  603.72201353,  273.9850609 ],
                            [   0.        ,    0.        ,    1.        ]])
 
 dist_coeffs = np.array(   [[ 0.45710893, -0.68904653,  0.05444916, -0.01899903, -1.79491808]])
+MARKER_SIDE_INCHES = 7.5
+MARKER_SIDE_FEET = MARKER_SIDE_INCHES/12
+
 
 # Generate our specific aruco dict
 aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_ARUCO_ORIGINAL)
-
 
 # Helper function to prune through all detected IDs and return executable and ignored command IDs
 # INPUT: list of ids     (list)
@@ -26,7 +28,8 @@ def parseImageCmds(ids):
     # Initialize our return variables
     move_dir_cmd, match_orient_cmd, match_pos_cmd, change_alt_cmd, ignored_cmds, num_duplicates = None, None, None, None, [], 0
 
-    # Sort the ids to make getting the commands easier.
+    # Flatten and sort ids to make getting the commands easier.
+    ids = [item for items in ids for item in items]
     ids.sort()
 
     # Iterate through all the ids, putting the lowest id from each category in our return variable, and discarding others
@@ -108,7 +111,6 @@ def rotationMatrixToEulerAngles(R) :
 
 
 
-
 # Drone Marker System and Commands:
 
 # Move in given direction:     ID 120-129
@@ -129,7 +131,7 @@ def rotationMatrixToEulerAngles(R) :
 # Matching marker position is incompatible with movement in a given direction, and takes priority over it
 
 # Constants used to tune program response
-ALT_DIVISOR = 2 # The higher this number is, the higher the drone will want to be.
+ALT_DIVISOR = 1 # The higher this number is, the higher the drone will want to be.
 
 # Initialize commands that will be "given" to the drone
 x_heading = 0  # positive means go right, negative means go left
@@ -169,7 +171,7 @@ try:
             # Move the way that the marker is pointing
             if move_dir_cmd is not None:
                 move_dir_corners = corners[np.nonzero(ids == move_dir_cmd)[0][0]]    # Get the corners corresponding to this ID, and draw pose
-                rvecs, tvecs, objPoints = cv2.aruco.estimatePoseSingleMarkers(move_dir_corners, 1, camera_matrix, dist_coeffs)
+                rvecs, tvecs, objPoints = cv2.aruco.estimatePoseSingleMarkers(move_dir_corners, MARKER_SIDE_FEET, camera_matrix, dist_coeffs)
                 rvec = rvecs[0][0]
                 tvec = tvecs[0][0]
                 frame = cv2.aruco.drawAxis(frame, camera_matrix, dist_coeffs, rvec, tvec, 1)
@@ -181,7 +183,7 @@ try:
             # Rotate until we're match the marker's rotation
             if match_orient_cmd is not None:
                 match_orient_corners = corners[np.nonzero(ids == match_orient_cmd)[0][0]]
-                rvecs, tvecs, objPoints = cv2.aruco.estimatePoseSingleMarkers(match_orient_corners, 1, camera_matrix, dist_coeffs)
+                rvecs, tvecs, objPoints = cv2.aruco.estimatePoseSingleMarkers(match_orient_corners, MARKER_SIDE_FEET, camera_matrix, dist_coeffs)
                 rvec = rvecs[0][0]
                 tvec = tvecs[0][0]
                 frame = cv2.aruco.drawAxis(frame, camera_matrix, dist_coeffs, rvec, tvec, 1)
@@ -192,7 +194,7 @@ try:
             # Move so that the marker is in the middle of the screen
             if match_pos_cmd is not None:
                 match_pos_corners = corners[np.nonzero(ids == match_pos_cmd)[0][0]]
-                rvecs, tvecs, objPoints = cv2.aruco.estimatePoseSingleMarkers(match_pos_corners, 1, camera_matrix, dist_coeffs)
+                rvecs, tvecs, objPoints = cv2.aruco.estimatePoseSingleMarkers(match_pos_corners, MARKER_SIDE_FEET, camera_matrix, dist_coeffs)
                 rvec = rvecs[0][0]
                 tvec = tvecs[0][0]
                 frame = cv2.aruco.drawAxis(frame, camera_matrix, dist_coeffs, rvec, tvec, 1)
@@ -202,12 +204,12 @@ try:
             # Change distance from the marker to a specified amount
             if change_alt_cmd is not None:
                 change_alt_corners = corners[np.nonzero(ids == change_alt_cmd)[0][0]]
-                rvecs, tvecs, objPoints = cv2.aruco.estimatePoseSingleMarkers(change_alt_corners, 1, camera_matrix, dist_coeffs)
+                rvecs, tvecs, objPoints = cv2.aruco.estimatePoseSingleMarkers(change_alt_corners, MARKER_SIDE_FEET, camera_matrix, dist_coeffs)
                 rvec = rvecs[0][0]
                 tvec = tvecs[0][0]
                 frame = cv2.aruco.drawAxis(frame, camera_matrix, dist_coeffs, rvec, tvec, 1)
                 desired_altitude = change_alt_cmd - 420 # Calculate desired altitude from ID of marker
-                altitude_change = -(tvec[2]/ALT_DIVISOR - desired_altitude)[0]
+                altitude_change = -(tvec[2]/ALT_DIVISOR - desired_altitude)
 
             # Print out ignored commands and duplicates
             if len(ignored_cmds) > 0:
@@ -217,8 +219,7 @@ try:
 
 
             # OBSOLETE:USE FOR REFERENCE --------------------------------
-            obs_rvecs, obs_tvecs, objPoints = cv2.aruco.estimatePoseSingleMarkers(corners[0], 1, camera_matrix, dist_coeffs)
-#            frame = cv2.aruco.drawAxis(frame, camera_matrix, dist_coeffs, rvecs, tvecs, 1)
+            obs_rvecs, obs_tvecs, objPoints = cv2.aruco.estimatePoseSingleMarkers(corners[0], MARKER_SIDE_FEET, camera_matrix, dist_coeffs)
 
             for i in range(0,len(rvecs)):
                 obs_rvec = obs_rvecs[i][0]

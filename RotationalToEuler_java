@@ -1,0 +1,26 @@
+public static double[] MatrixToYawPitchRoll( RotationMatrix A )
+{
+        double[] angle = new double[3];
+        angle[1] = -Math.asin( A.r31 );  //Pitch
+
+        //Gymbal lock: pitch = -90
+        if( A.r31 == 1 ){
+            angle[0] = 0.0;             //yaw = 0
+            angle[2] = Math.atan2( -A.r12, -A.r13 );    //Roll
+            System.out.println("Gimbal lock: pitch = -90");
+        }
+
+        //Gymbal lock: pitch = 90
+        else if( A.r31 == -1 ){
+            angle[0] = 0.0;             //yaw = 0
+            angle[2] = Math.atan2( A.r12, A.r13 );    //Roll
+            System.out.println("Gimbal lock: pitch = 90");
+        }
+        //General solution
+        else{
+            angle[0] = Math.atan2(  A.r21, A.r11 );
+            angle[2] = Math.atan2(  A.r32, A.r33 );
+            System.out.println("No gimbal lock");
+        }
+        return angle;   //Euler angles in order yaw, pitch, roll
+}
